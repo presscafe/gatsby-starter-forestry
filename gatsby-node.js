@@ -1,106 +1,44 @@
 const path = require('path')
-const { createFilePath } = require('gatsby-source-filesystem')
+const articles = require('./src/data/articles.json')
 
-function isIndexPage(post) {
-  return path.basename(post.node.fileAbsolutePath) === 'index.md'
-}
-
-exports.createPages = ({ graphql, actions }) => {
+exports.createPages = ({ actions }) => {
   const { createPage } = actions
+  const articleTemplate = path.resolve('./src/templates/article.js')
+  const sectionTemplate = path.resolve('./src/templates/section.js')
 
-  return new Promise((resolve, reject) => {
-    const templates = {
-      list: path.resolve('./src/templates/list.js'),
-      single: path.resolve('./src/templates/single.js'),
-      blocks: path.resolve('./src/templates/blocks.js'),
-    }
-    resolve(
-      // query for markdown files
-      graphql(
-        `
-          {
-            allMarkdownRemark(
-              sort: { fields: [frontmatter___date], order: DESC }
-              limit: 1000
-            ) {
-              edges {
-                node {
-                  excerpt(format: PLAIN)
-                  fileAbsolutePath
-                  fields {
-                    slug
-                  }
-                  frontmatter {
-                    title
-                    template
-                    date(formatString: "MMMM DD, YYYY")
-                  }
-                }
-              }
-            }
-          }
-        `
-      ).then(result => {
-        if (result.errors) {
-          console.log(result.errors)
-          reject(result.errors)
-        }
-
-        // create the posts
-        const posts = result.data.allMarkdownRemark.edges
-
-        for (post of posts) {
-          let postContext = {
-            slug: post.node.fields.slug,
-          }
-
-          // if it's a post index, add corresponding posts to context
-          if (isIndexPage(post)) {
-            const parentRelPath = path.dirname(
-              path.relative(__dirname, post.node.fileAbsolutePath)
-            )
-            postContext.children = posts.filter(({ node }) => {
-              if (path.basename(node.fileAbsolutePath) === 'index.md') {
-                return false
-              }
-              const childRelPath = path.relative(
-                __dirname,
-                node.fileAbsolutePath
-              )
-              return childRelPath.startsWith(parentRelPath)
-            })
-          }
-
-          // determine which layout to use for post
-          let templateComponent
-          if (post.node.frontmatter.template) {
-            templateComponent = templates[post.node.frontmatter.template]
-          } else if (isIndexPage(post)) {
-            templateComponent = templates.list
-          } else {
-            templateComponent = templates.single
-          }
-
-          createPage({
-            path: post.node.fields.slug,
-            component: templateComponent,
-            context: postContext,
-          })
-        }
-      })
-    )
-  })
-}
-
-exports.onCreateNode = ({ node, actions, getNode }) => {
-  const { createNodeField } = actions
-
-  if (node.internal.type === 'MarkdownRemark') {
-    const value = createFilePath({ node, getNode })
-    createNodeField({
-      name: `slug`,
-      node,
-      value,
+  articles.forEach(article => {
+    createPage({
+      path: `/news/${article.slug}/`,
+      component: articleTemplate,
+      context: {
+        article,
+        related: articles
+          .filter(item => item.slug !== article.slug)
+          .sort((a, b) => Number(b.section === article.section) - Number(a.section === article.section))
+          .slice(0, 3),
+      },
     })
-  }
+  })
+
+  const sections = new Map()
+  articles.forEach(article => {
+    if (!sections.has(article.section)) {
+      sections.set(article.section, {
+        name: article.category,
+        slug: article.section,
+        description: article.sectionDescription,
+      })
+    }
+  })
+
+  sections.forEach((section, slug) => {
+    createPage({
+      path: `/section/${slug}/`,
+      component: sectionTemplate,
+      context: {
+        section,
+        articles: articles.filter(article => article.section === slug),
+      },
+    })
+  })
 }
