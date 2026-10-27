@@ -1,54 +1,36 @@
-import React from 'react'
-import PropTypes from 'prop-types'
-import Helmet from 'react-helmet'
-import { StaticQuery, graphql } from 'gatsby'
-
+import React, { useEffect, useState } from 'react'
+import { ArrowUp } from 'lucide-react'
 import Header from './header'
 import Footer from './footer'
-import '../css/main.scss'
 
-import favicon from './favicon.png'
+const Layout = ({ children }) => {
+  const [showBackToTop, setShowBackToTop] = useState(false)
 
-const Layout = ({ children }) => (
-  <StaticQuery
-    query={graphql`
-      query SiteTitleQuery {
-        site {
-          siteMetadata {
-            title
-            footer
-          }
-        }
-      }
-    `}
-    render={data => (
-      <>
-        <Helmet
-          title={data.site.siteMetadata.title}
-          meta={[
-            { name: 'description', content: 'Sample' },
-            { name: 'keywords', content: 'sample, something' },
-          ]}
-          link={[
-            {
-              rel: 'shortcut icon',
-              type: 'image/png',
-              href: `${favicon}`,
-            },
-          ]}
+  useEffect(() => {
+    const onScroll = () => setShowBackToTop(window.scrollY > 800)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  return (
+    <>
+      <a className="skip-link" href="#main-content">Skip to main content</a>
+      <Header />
+      <main id="main-content">{children}</main>
+      <Footer />
+      {showBackToTop && (
+        <button
+          type="button"
+          className="back-to-top"
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          aria-label="Back to top"
         >
-          <html lang="en" />
-        </Helmet>
-        <Header siteTitle={data.site.siteMetadata.title} />
-        {children}
-        <Footer content={data.site.siteMetadata.footer} />
-      </>
-    )}
-  />
-)
-
-Layout.propTypes = {
-  children: PropTypes.node.isRequired,
+          <ArrowUp size={20} />
+        </button>
+      )}
+    </>
+  )
 }
 
 export default Layout

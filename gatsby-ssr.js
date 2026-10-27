@@ -1,7 +1,8 @@
-/**
- * Implement Gatsby's SSR (Server Side Rendering) APIs in this file.
- *
- * See: https://www.gatsbyjs.org/docs/ssr-apis/
- */
+const React = require('react')
 
-// You can delete this file if you're not using it
+exports.onRenderBody = ({ setHeadComponents }) => {
+  setHeadComponents([
+    <link key="favicon" rel="icon" type="image/svg+xml" href="/favicon.svg" />,
+    <meta key="color-scheme" name="color-scheme" content="light" />,
+  ])
+}
